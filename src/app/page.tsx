@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react'
 import Header from '@/components/Header'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Legend,
+  BarChart, Bar, Legend, Cell, PieChart, Pie,
 } from 'recharts'
 import {
-  TrendingUp, Package, Tag, Handshake, AlertTriangle, DollarSign, BarChart2, Gem,
+  TrendingUp, Package, Tag, Handshake, AlertTriangle, DollarSign, BarChart2, Gem, PieChart as PieChartIcon, Trophy,
 } from 'lucide-react'
+
+const COLORS = ['#c9a84c', '#7c3aed', '#10b981', '#f43f5e', '#f59e0b', '#3b82f6']
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)
@@ -35,6 +37,8 @@ interface DashboardData {
     items: Array<{ qty: number; product: { name: string; brand: { name: string } } }>
   }>
   monthlySales: Array<{ month: string; revenue: number; txCount: number }>
+  salesByCategory: Array<{ category: string; revenue: number }>
+  topBrands: Array<{ brand: string; revenue: number }>
 }
 
 export default function DashboardPage() {
@@ -63,6 +67,14 @@ export default function DashboardPage() {
     ...m,
     revenue: Number(m.revenue),
     month: m.month,
+  }))
+  const salesByCategory = (data?.salesByCategory || []).map(c => ({
+    ...c,
+    revenue: Number(c.revenue)
+  }))
+  const topBrands = (data?.topBrands || []).map(b => ({
+    ...b,
+    revenue: Number(b.revenue)
   }))
 
   return (
@@ -134,7 +146,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Charts */}
+        {/* First Row of Charts */}
         <div className="grid-2 mb-6">
           <div className="card">
             <div className="section-header">
@@ -168,6 +180,74 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="empty-state"><div className="empty-state-icon">📊</div><div className="empty-state-text">Belum ada data penjualan</div></div>
+            )}
+          </div>
+
+          <div className="card">
+            <div className="section-header">
+              <div className="section-title">
+                <PieChartIcon size={16} className="text-gold" />
+                Distribusi Kategori (Bulan Ini)
+              </div>
+            </div>
+            {salesByCategory.length > 0 ? (
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={salesByCategory}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="revenue"
+                      nameKey="category"
+                    >
+                      {salesByCategory.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(v: any) => [fmt(Number(v)), 'Revenue']}
+                      contentStyle={{ background: '#161618', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="empty-state"><div className="empty-state-icon">🥧</div><div className="empty-state-text">Belum ada data kategori</div></div>
+            )}
+          </div>
+        </div>
+
+        {/* Second Row of Charts */}
+        <div className="grid-2 mb-6">
+          <div className="card">
+            <div className="section-header">
+              <div className="section-title">
+                <Trophy size={16} className="text-gold" />
+                Top 5 Brand Terlaris (Bulan Ini)
+              </div>
+            </div>
+            {topBrands.length > 0 ? (
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topBrands} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <XAxis type="number" stroke="#52525b" tick={{ fontSize: 11 }} hide />
+                    <YAxis dataKey="brand" type="category" stroke="#52525b" tick={{ fontSize: 11 }} width={80} />
+                    <Tooltip
+                      formatter={(v: any) => [fmt(Number(v)), 'Revenue']}
+                      contentStyle={{ background: '#161618', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
+                    />
+                    <Bar dataKey="revenue" fill="#c9a84c" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="empty-state"><div className="empty-state-icon">🏆</div><div className="empty-state-text">Belum ada data brand</div></div>
             )}
           </div>
 

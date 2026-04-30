@@ -70,6 +70,40 @@ export async function GET() {
         )
       : null
 
+    // Category Sales Distribution
+    const categorySalesMap: Record<string, number> = {}
+    transactionsThisMonth.forEach(tx => {
+      tx.items.forEach(item => {
+        // We need category, but TransactionItem doesn't have it directly.
+        // We might need to fetch it or include it.
+        // For simplicity, let's use the recentTransactions structure or fetch it.
+      })
+    })
+
+    // Let's do a more efficient aggregate
+    const [salesByCategory, topBrands] = await Promise.all([
+      prisma.$queryRaw`
+        SELECT p.category, SUM(ti.unitPrice * ti.qty) as revenue
+        FROM TransactionItem ti
+        JOIN Product p ON ti.productId = p.id
+        JOIN "Transaction" t ON ti.transactionId = t.id
+        WHERE t.timestamp >= date('now', 'start of month')
+        GROUP BY p.category
+        ORDER BY revenue DESC
+      ` as Promise<Array<{ category: string; revenue: number }>>,
+      prisma.$queryRaw`
+        SELECT b.name as brand, SUM(ti.unitPrice * ti.qty) as revenue
+        FROM TransactionItem ti
+        JOIN Product p ON ti.productId = p.id
+        JOIN Brand b ON p.brandId = b.id
+        JOIN "Transaction" t ON ti.transactionId = t.id
+        WHERE t.timestamp >= date('now', 'start of month')
+        GROUP BY b.name
+        ORDER BY revenue DESC
+        LIMIT 5
+      ` as Promise<Array<{ brand: string; revenue: number }>>,
+    ])
+
     return NextResponse.json({
       kpi: {
         totalBrands,
@@ -83,6 +117,8 @@ export async function GET() {
       },
       recentTransactions,
       monthlySales,
+      salesByCategory,
+      topBrands,
       userRole: role,
     })
   } catch (error) {
