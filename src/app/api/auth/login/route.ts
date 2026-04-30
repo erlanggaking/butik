@@ -12,9 +12,9 @@ export async function POST(req: NextRequest) {
     try {
       await prisma.$connect()
       console.log('DB connected successfully')
-    } catch (dbErr) {
+    } catch (dbErr: any) {
       console.error('DB Connection Error:', dbErr)
-      return NextResponse.json({ error: 'Database tidak terhubung' }, { status: 500 })
+      return NextResponse.json({ error: `Database tidak terhubung: ${dbErr.message || 'Unknown error'}` }, { status: 500 })
     }
 
     if (!username || !password) {

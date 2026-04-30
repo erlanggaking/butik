@@ -1,4 +1,8 @@
 import { PrismaClient } from '@prisma/client'
+import path from 'path'
+
+const dbPath = path.join(process.cwd(), 'prisma', 'dev.db')
+const databaseUrl = `file:${dbPath}`
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
@@ -7,6 +11,11 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
+    datasources: {
+      db: {
+        url: databaseUrl,
+      },
+    },
     log: ['error'],
   })
 
