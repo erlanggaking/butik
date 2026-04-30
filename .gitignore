@@ -42,6 +42,6 @@ next-env.d.ts
 
 /src/generated/prisma
 
-# local databases
-*.db
-*.db-journal
+# local databases (removed from ignore for Vercel bundling)
+# *.db
+# *.db-journal
