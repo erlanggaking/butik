@@ -15,10 +15,8 @@ export async function GET() {
       totalBrands,
       totalProducts,
       inventoryData,
-      transactionsThisMonth,
+      allTransactions,
       pendingSettlements,
-      recentTransactions,
-      monthlySales,
     ] = await Promise.all([
       prisma.brand.count(),
       prisma.product.count(),
@@ -26,31 +24,23 @@ export async function GET() {
       prisma.transaction.findMany({
         where: {
           timestamp: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+            gte: new Date(new Date().getFullYear(), new Date().getMonth() - 6, 1),
           },
         },
-        include: { items: true },
+        include: { 
+          items: { 
+            include: { 
+              product: { 
+                include: { brand: true } 
+              } 
+            } 
+          } 
+        },
       }),
       prisma.settlement.findMany({
         where: { status: 'PENDING' },
         include: { brand: true },
       }),
-      prisma.transaction.findMany({
-        orderBy: { timestamp: 'desc' },
-        take: 10,
-        include: { items: { include: { product: { include: { brand: true } } } } },
-      }),
-      // Monthly sales for last 6 months
-      prisma.$queryRaw`
-        SELECT 
-          strftime('%Y-%m', timestamp) as month,
-          SUM(totalAmount) as revenue,
-          COUNT(*) as txCount
-        FROM "Transaction"
-        WHERE timestamp >= date('now', '-6 months')
-        GROUP BY strftime('%Y-%m', timestamp)
-        ORDER BY month ASC
-      ` as Promise<Array<{ month: string; revenue: number; txCount: number }>>,
     ])
 
     const totalStock = inventoryData.reduce((sum, inv) => sum + inv.qty, 0)
@@ -62,6 +52,11 @@ export async function GET() {
         .reduce((sum, inv) => sum + inv.qty * inv.product.basePrice, 0)
       : null
 
+    const thisMonth = new Date().getMonth()
+    const thisYear = new Date().getFullYear()
+    const startOfThisMonth = new Date(thisYear, thisMonth, 1)
+
+    const transactionsThisMonth = allTransactions.filter(tx => new Date(tx.timestamp) >= startOfThisMonth)
     const monthRevenue = transactionsThisMonth.reduce((sum, tx) => sum + tx.totalAmount, 0)
     
     const monthMargin = role === 'ADMIN'
@@ -70,39 +65,42 @@ export async function GET() {
         )
       : null
 
-    // Category Sales Distribution
-    const categorySalesMap: Record<string, number> = {}
+    // Category Sales Distribution (This Month)
+    const categoryMap: Record<string, number> = {}
     transactionsThisMonth.forEach(tx => {
       tx.items.forEach(item => {
-        // We need category, but TransactionItem doesn't have it directly.
-        // We might need to fetch it or include it.
-        // For simplicity, let's use the recentTransactions structure or fetch it.
+        const cat = item.product.category
+        categoryMap[cat] = (categoryMap[cat] || 0) + (item.unitPrice * item.qty)
       })
     })
+    const salesByCategory = Object.entries(categoryMap)
+      .map(([category, revenue]) => ({ category, revenue }))
+      .sort((a, b) => b.revenue - a.revenue)
 
-    // Let's do a more efficient aggregate
-    const [salesByCategory, topBrands] = await Promise.all([
-      prisma.$queryRaw`
-        SELECT p.category, SUM(ti.unitPrice * ti.qty) as revenue
-        FROM TransactionItem ti
-        JOIN Product p ON ti.productId = p.id
-        JOIN "Transaction" t ON ti.transactionId = t.id
-        WHERE t.timestamp >= date('now', 'start of month')
-        GROUP BY p.category
-        ORDER BY revenue DESC
-      ` as Promise<Array<{ category: string; revenue: number }>>,
-      prisma.$queryRaw`
-        SELECT b.name as brand, SUM(ti.unitPrice * ti.qty) as revenue
-        FROM TransactionItem ti
-        JOIN Product p ON ti.productId = p.id
-        JOIN Brand b ON p.brandId = b.id
-        JOIN "Transaction" t ON ti.transactionId = t.id
-        WHERE t.timestamp >= date('now', 'start of month')
-        GROUP BY b.name
-        ORDER BY revenue DESC
-        LIMIT 5
-      ` as Promise<Array<{ brand: string; revenue: number }>>,
-    ])
+    // Top Brands (This Month)
+    const brandMap: Record<string, number> = {}
+    transactionsThisMonth.forEach(tx => {
+      tx.items.forEach(item => {
+        const bName = item.product.brand.name
+        brandMap[bName] = (brandMap[bName] || 0) + (item.unitPrice * item.qty)
+      })
+    })
+    const topBrands = Object.entries(brandMap)
+      .map(([brand, revenue]) => ({ brand, revenue }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5)
+
+    // Monthly Sales Trend (Last 6 Months)
+    const monthlyMap: Record<string, { revenue: number, txCount: number }> = {}
+    allTransactions.forEach(tx => {
+      const monthStr = new Date(tx.timestamp).toISOString().substring(0, 7) // YYYY-MM
+      if (!monthlyMap[monthStr]) monthlyMap[monthStr] = { revenue: 0, txCount: 0 }
+      monthlyMap[monthStr].revenue += tx.totalAmount
+      monthlyMap[monthStr].txCount += 1
+    })
+    const monthlySales = Object.entries(monthlyMap)
+      .map(([month, data]) => ({ month, ...data }))
+      .sort((a, b) => a.month.localeCompare(b.month))
 
     return NextResponse.json({
       kpi: {
@@ -115,13 +113,21 @@ export async function GET() {
         pendingSettlementsCount: role === 'ADMIN' ? pendingSettlements.length : null,
         pendingSettlementsAmount: role === 'ADMIN' ? pendingSettlements.reduce((s, st) => s + st.commissionAmount, 0) : null,
       },
-      recentTransactions,
+      recentTransactions: allTransactions.slice(0, 10).map(tx => ({
+        id: tx.id,
+        timestamp: tx.timestamp,
+        totalAmount: tx.totalAmount,
+        paymentMethod: tx.paymentMethod,
+        channel: tx.channel,
+        items: tx.items.map(i => ({ qty: i.qty, product: { name: i.product.name, brand: { name: i.product.brand.name } } }))
+      })),
       monthlySales,
       salesByCategory,
       topBrands,
       userRole: role,
     })
   } catch (error) {
+    console.error(error)
     return NextResponse.json({ error: 'Failed to fetch dashboard data' }, { status: 500 })
   }
 }
