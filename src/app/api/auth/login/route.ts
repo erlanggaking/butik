@@ -6,6 +6,16 @@ import { setSession } from '@/lib/auth'
 export async function POST(req: NextRequest) {
   try {
     const { username, password } = await req.json()
+    console.log('Login attempt for:', username)
+    
+    // Check DB connectivity
+    try {
+      await prisma.$connect()
+      console.log('DB connected successfully')
+    } catch (dbErr) {
+      console.error('DB Connection Error:', dbErr)
+      return NextResponse.json({ error: 'Database tidak terhubung' }, { status: 500 })
+    }
 
     if (!username || !password) {
       return NextResponse.json({ error: 'Username dan password wajib diisi' }, { status: 400 })
