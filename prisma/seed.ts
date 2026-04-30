@@ -120,8 +120,17 @@ async function main() {
   const paymentMethods = ['Cash', 'Card', 'Transfer', 'QRIS']
   const channels = ['In-Store', 'Online']
 
-  for (let t = 0; t < 50; t++) {
-    const daysAgo = Math.floor(Math.random() * 90)
+  // Create 150 transactions spanning last 6 months, ensuring many in this/last month
+  for (let t = 0; t < 150; t++) {
+    let daysAgo
+    if (t < 40) {
+      daysAgo = Math.floor(Math.random() * 25) // Current month
+    } else if (t < 80) {
+      daysAgo = 30 + Math.floor(Math.random() * 28) // Last month
+    } else {
+      daysAgo = Math.floor(Math.random() * 180) // Last 6 months
+    }
+    
     const txDate = new Date()
     txDate.setDate(txDate.getDate() - daysAgo)
 
@@ -143,7 +152,7 @@ async function main() {
     }))
     const totalAmount = items.reduce((s, i) => s + i.unitPrice * i.qty, 0)
 
-    const isLinkedToCustomer = Math.random() > 0.5
+    const isLinkedToCustomer = Math.random() > 0.6
     const customer = isLinkedToCustomer ? customers[Math.floor(Math.random() * customers.length)] : undefined
 
     await prisma.transaction.create({
@@ -157,7 +166,7 @@ async function main() {
       }
     })
   }
-  console.log(`✅ Created 50 transactions`)
+  console.log(`✅ Created 150 transactions`)
 
   const consignmentBrands = brands.filter(b => b.type === 'CONSIGNMENT')
   for (const brand of consignmentBrands) {
