@@ -58,6 +58,7 @@ export async function GET() {
         score: scoreData.score,
         turnoverRate: scoreData.turnoverRate,
         marginRate: scoreData.marginRate,
+        rank: 0,
       }
     })
 

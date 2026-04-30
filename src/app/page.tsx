@@ -158,7 +158,7 @@ export default function DashboardPage() {
                     <YAxis stroke="#52525b" tick={{ fontSize: 11 }}
                       tickFormatter={(v) => `${(v / 1000000).toFixed(0)}jt`} />
                     <Tooltip
-                      formatter={(v: number) => [fmt(v), 'Revenue']}
+                      formatter={(v: any) => [fmt(Number(v)), 'Revenue']}
                       contentStyle={{ background: '#161618', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
                     />
                     <Area type="monotone" dataKey="revenue" stroke="#c9a84c" strokeWidth={2}
@@ -186,7 +186,7 @@ export default function DashboardPage() {
                     <XAxis dataKey="month" stroke="#52525b" tick={{ fontSize: 11 }} />
                     <YAxis stroke="#52525b" tick={{ fontSize: 11 }} />
                     <Tooltip
-                      formatter={(v: number) => [v, 'Transaksi']}
+                      formatter={(v: any) => [v, 'Transaksi']}
                       contentStyle={{ background: '#161618', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
                     />
                     <Bar dataKey="txCount" fill="#7c3aed" radius={[4, 4, 0, 0]} />

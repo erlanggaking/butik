@@ -211,7 +211,7 @@ export default function AIInsightsPage() {
                     <XAxis type="number" domain={[0, 100]} stroke="#52525b" tick={{ fontSize: 10 }} />
                     <YAxis type="category" dataKey="brandName" stroke="#52525b" tick={{ fontSize: 10 }} width={100} />
                     <Tooltip contentStyle={{ background: '#161618', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
-                      formatter={(v: number) => [`${v}/100`, 'AI Score']} />
+                      formatter={(v: any) => [`${v}/100`, 'AI Score']} />
                     <Bar dataKey="score" radius={[0, 4, 4, 0]}
                       fill="#c9a84c" />
                   </BarChart>
