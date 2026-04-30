@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Brand {
+  id             Int           @id @default(autoincrement())
+  name           String        @unique
+  type           String        @default("REGULAR") // REGULAR or CONSIGNMENT
+  commissionRate Float         @default(0.3)       // Untuk konsinyasi
+  createdAt      DateTime      @default(now())
+  products       Product[]
+  settlements    Settlement[]
+}
+
+model Product {
+  id               Int               @id @default(autoincrement())
+  sku              String            @unique
+  name             String
+  category         String
+  brandId          Int
+  size             String            @default("One Size")
+  color            String            @default("Mixed")
+  basePrice        Float
+  sellingPrice     Float
+  createdAt        DateTime          @default(now())
+  brand            Brand             @relation(fields: [brandId], references: [id])
+  inventory        Inventory[]
+  transactionItems TransactionItem[]
+}
+
+model Inventory {
+  id               Int      @id @default(autoincrement())
+  productId        Int
+  qty              Int      @default(0)
+  location         String   @default("Main Store")
+  lastMovementDate DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  product          Product  @relation(fields: [productId], references: [id])
+}
+
+model Transaction {
+  id            Int               @id @default(autoincrement())
+  timestamp     DateTime          @default(now())
+  totalAmount   Float
+  paymentMethod String            @default("Cash") // Cash, Card, Transfer, QRIS
+  channel       String            @default("In-Store") // In-Store, Online
+  notes         String            @default("")
+  customerId    Int?
+  customer      Customer?         @relation(fields: [customerId], references: [id])
+  items         TransactionItem[]
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  name      String
+  role      String   @default("CASHIER") // ADMIN, CASHIER
+  createdAt DateTime @default(now())
+}
+
+model Customer {
+  id           Int           @id @default(autoincrement())
+  name         String
+  phone        String?
+  email        String?
+  vipTier      String        @default("Regular") // Regular, Silver, Gold, Platinum
+  totalSpent   Float         @default(0)
+  preferences  String?
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+}
+
+model TransactionItem {
+  id            Int         @id @default(autoincrement())
+  transactionId Int
+  productId     Int
+  qty           Int
+  unitPrice     Float
+  cogs          Float
+  margin        Float
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  product       Product     @relation(fields: [productId], references: [id])
+}
+
+model Settlement {
+  id               Int       @id @default(autoincrement())
+  brandId          Int
+  period           String    // e.g., "2025-04"
+  totalSales       Float
+  commissionAmount Float
+  status           String    @default("PENDING") // PENDING, PAID
+  paidAt           DateTime?
+  createdAt        DateTime  @default(now())
+  brand            Brand     @relation(fields: [brandId], references: [id])
+}
